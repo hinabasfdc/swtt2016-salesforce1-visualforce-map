@@ -1,0 +1,22 @@
+global with sharing class AccountLocation {
+
+    @RemoteAction
+    /****
+     * 現在位置を受け取り、最寄のアカウントの情報を返す
+     ****/
+    global static List<Account> getNearestAccount(String src_lat, String src_lng) {
+
+        //引数が入っていなければnullを返す
+        if (src_lat == null || src_lng == null) {
+            return null;
+        }
+
+        //緯度経度のためDouble型に変換
+        Double src_lat_d = Double.valueOf(src_lat);
+        Double src_lng_d = Double.valueOf(src_lng);
+
+		    //LocationベースのSOQLクエリーで最寄のアカウントを検索
+        List<Account> accounts = [SELECT Id, Name, Location__Latitude__s, Location__Longitude__s FROM Account WHERE Location__Latitude__s != null AND Location__Longitude__s != null ORDER BY DISTANCE(Location__c, GEOLOCATION(:src_lat_d, :src_lng_d), 'km') ASC Limit 1];
+        return accounts;
+    }
+}

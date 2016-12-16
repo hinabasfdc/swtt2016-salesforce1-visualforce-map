@@ -1,0 +1,137 @@
+<apex:page controller="AccountLocation" showHeader="false" standardStylesheets="false" sidebar="false" applyHtmlTag="false" applyBodyTag="false" docType="html-5.0">
+    <html xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" lang="ja">
+        <head>
+            <meta charset="utf-8"/>
+            <meta http-equiv="x-ua-compatible" content="ie=edge"/>
+            <title>最寄アカウント</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
+            <!-- スタイル -->
+            <style type="text/css">
+                body,
+                html {
+                    height: 100%;
+                    margin: 0;
+                    padding: 0;
+                    text-align: center;
+                }
+
+                p {
+                    margin: 0;
+                    padding: 12px;
+                }
+
+                #map {
+                    margin-top: 12px;
+                    height: 100%;
+                    background-color: #EEE;
+                    color: #999;
+                }
+
+                #execButton {
+                    margin: 12px 0;
+                }
+
+                .info {
+                    font-size: small;
+                }
+
+            </style>
+        </head>
+        <body>
+            <!-- スクリプト -->
+            <script>
+                function getNearestAccount(position) {
+
+                    document.getElementById('map').innerHTML = "<p>探索中です…</p>"
+
+                    //デバイスの緯度経度情報を取得
+                    var src_lat = position.coords.latitude;
+                    var src_lng = position.coords.longitude;
+
+                    //APEXクラスのメソッドを呼び出し
+                    Visualforce.remoting.Manager.invokeAction('{!$RemoteAction.AccountLocation.getNearestAccount}', src_lat, src_lng, function (result, event) {
+
+                        //返り値を格納
+                        var accountname
+                        var lat;
+                        var lng;
+                        if (event.status) {
+                            for (var i = 0; i < result.length; i++) {
+                                var id = result[i].Id;
+                                accountname = result[i].Name;
+                                lat = result[i].Location__Latitude__s;
+                                lng = result[i].Location__Longitude__s;
+                            }
+                        } else {
+                            alert(event.message);
+                        }
+
+                        //マップを表示
+                        initMap(lat, lng, accountname, src_lat, src_lng);
+                    }, {escape: true});
+                }
+
+                function initMap(tgt_lat, tgt_lng, accountname, src_lat, src_lng) {
+
+                    //最寄りの取引先&現在位置の緯度経度を変数に格納
+                    var tgtLatlng = new google.maps.LatLng(tgt_lat, tgt_lng);
+                    var currentLatlng = new google.maps.LatLng(src_lat, src_lng);
+
+                    //ルート探索を行うためDirectionsRendererオブジェクトを作成
+                    var directionsDisplay = new google.maps.DirectionsRenderer();
+                    var mapOptions = {
+                        center: tgtLatlng,
+                        zoom: 16
+                    }
+                    var map = new google.maps.Map(document.getElementById('map'), mapOptions);
+                    directionsDisplay.setMap(map);
+
+                    //DrectionsServiceオブジェクトを作成し、現在地・目的地・手段をセット
+                    var directionsService = new google.maps.DirectionsService();
+                    var request = {
+                        origin: currentLatlng,
+                        destination: tgtLatlng,
+                        travelMode: google.maps.TravelMode.WALKING
+                    };
+
+                    //ルート探索実行
+                    directionsService.route(request, function (result, status) {
+                        if (status == google.maps.DirectionsStatus.OK) {
+                            //時間と距離を取得
+                            var duration = result.routes[0].legs[0].duration.text;
+                            var distance = result.routes[0].legs[0].distance.text;
+
+                            //目的地はinfoWindowとして表示
+                            var infoWindow = new google.maps.InfoWindow({
+                                position: tgtLatlng,
+                                content: accountname + " : " + distance + " : 徒歩約" + duration
+                            });
+                            infoWindow.setMap(map);
+
+                            //現在位置と最寄アカウントの住所を表示
+                            document.getElementById('info-currentposition').innerHTML = "現在位置: " + result.routes[0].legs[0].start_address;
+                            document.getElementById('info-account').innerHTML = "最寄アカウント: " + result.routes[0].legs[0].end_address;
+
+                            //結果を描画
+                            directionsDisplay.setDirections(result);
+                        }
+                    });
+                }
+            </script>
+            <!-- Google Map JavaScriptライブラリを読み込み -->
+            <script src="https://maps.googleapis.com/maps/api/js?key=[ここをGoogle API Keyに置き換え]" async="true" defer="true"></script>
+
+            <!-- 画面表示定義 -->
+            <button id="execButton" onclick="navigator.geolocation.getCurrentPosition(getNearestAccount);">地図表示&amp;ルート探索</button>
+            <div id="info-currentposition" class="info">現在位置:
+            </div>
+            <div id="info-account" class="info">最寄アカウント:
+            </div>
+            <div id="map">
+                <p>ここに地図が表示されます</p>
+            </div>
+
+        </body>
+    </html>
+</apex:page>
