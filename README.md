@@ -7,6 +7,7 @@
 ### Salesforce 開発組織の取得
 
 1. 次のリンク先から開発者組織を取得してください。(2016/12時点ではWinter'17)
+    1. https://developer.salesforce.com/ja/
 
 ### 取引先オブジェクトへの項目追加
 
